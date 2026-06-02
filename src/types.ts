@@ -5,6 +5,7 @@ export type Quadrant = "Q1" | "Q2" | "Q3" | "Q4";
 
 export interface Task {
   id: number;
+  uuid: string;
   title: string;
   description: string | null;
   dimension: Dimension;
@@ -20,6 +21,7 @@ export interface Task {
   created_at: string;
   completed_at: string | null;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface NewTaskInput {

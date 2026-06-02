@@ -12,13 +12,26 @@ import { SOFT_DURATION_PRESETS, softDurationLabel } from "@/lib/ddl";
 import { DatePicker } from "./DatePicker";
 import { ConfirmDialog } from "./ConfirmDialog";
 
+// Prefill for the create path — used when triaging a 待定 item into a quadrant.
+// Distinct from `task` (which puts the form in edit mode and calls updateTask).
+export interface PendingPrefill {
+  title: string;
+  description: string | null;
+  dimension: Dimension | null;
+  quadrant: Quadrant | null;
+  ddlType: DDLType | "none";
+  ddlDate: string | null;
+  ddlDurationDays: number | null;
+}
+
 interface Props {
   open: boolean;
   task?: Task | null;
   defaultQuadrant?: Quadrant;
   defaultDimension?: Dimension;
+  prefill?: PendingPrefill | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (createdTask?: Task) => void;
 }
 
 const QUADRANT_OPTIONS: {
@@ -49,6 +62,7 @@ export function TaskForm({
   task,
   defaultQuadrant,
   defaultDimension,
+  prefill,
   onClose,
   onSaved,
 }: Props) {
@@ -78,6 +92,17 @@ export function TaskForm({
       setDdlDurationDays(task.ddl_duration_days ?? 30);
       setOriginalDurationDays(task.ddl_duration_days ?? null);
       setOriginalSetAt(task.ddl_set_at ?? null);
+    } else if (prefill) {
+      // Triaging a 待定 item: seed from LLM guesses, fall back to defaults.
+      setTitle(prefill.title);
+      setDescription(prefill.description ?? "");
+      setDimension(prefill.dimension ?? defaultDimension ?? "work");
+      setQuadrant(prefill.quadrant ?? defaultQuadrant ?? "Q2");
+      setDdlType(prefill.ddlType);
+      setDdlDate(prefill.ddlDate ? prefill.ddlDate.slice(0, 10) : "");
+      setDdlDurationDays(prefill.ddlDurationDays ?? 30);
+      setOriginalDurationDays(null);
+      setOriginalSetAt(null);
     } else {
       setTitle("");
       setDescription("");
@@ -89,7 +114,7 @@ export function TaskForm({
       setOriginalDurationDays(null);
       setOriginalSetAt(null);
     }
-  }, [task, open, defaultQuadrant, defaultDimension]);
+  }, [task, open, defaultQuadrant, defaultDimension, prefill]);
 
   if (!open) return null;
 
@@ -122,10 +147,11 @@ export function TaskForm({
       };
       if (editing && task) {
         await updateTask(task.id, payload);
+        onSaved();
       } else {
-        await addTask(payload);
+        const created = await addTask(payload);
+        onSaved(created);
       }
-      onSaved();
       onClose();
     } finally {
       setBusy(false);

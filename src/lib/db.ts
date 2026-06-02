@@ -3,6 +3,7 @@ import {
   Task,
   Quadrant,
   Dimension,
+  DDLType,
   NewTaskInput,
   flagsOfQuadrant,
 } from "@/types";
@@ -25,6 +26,7 @@ export async function getDb(): Promise<Database> {
 
 interface TaskRow {
   id: number;
+  uuid: string;
   title: string;
   description: string | null;
   dimension: Dimension;
@@ -40,6 +42,8 @@ interface TaskRow {
   created_at: string;
   completed_at: string | null;
   updated_at: string;
+  device_id: string | null;
+  deleted_at: string | null;
 }
 
 const rowToTask = (r: TaskRow): Task => ({
@@ -58,10 +62,10 @@ async function nextPositionInQuadrant(
   const sql = excludeId
     ? `SELECT MAX(position) as max_pos FROM tasks
         WHERE dimension = $1 AND importance = $2 AND urgency = $3
-          AND status = 'active' AND id != $4`
+          AND status = 'active' AND deleted_at IS NULL AND id != $4`
     : `SELECT MAX(position) as max_pos FROM tasks
         WHERE dimension = $1 AND importance = $2 AND urgency = $3
-          AND status = 'active'`;
+          AND status = 'active' AND deleted_at IS NULL`;
   const params = excludeId
     ? [dimension, importance, urgency, excludeId]
     : [dimension, importance, urgency];
@@ -78,13 +82,15 @@ export async function addTask(input: NewTaskInput): Promise<Task> {
     input.urgency,
   );
   const tagsJson = input.tags ? JSON.stringify(input.tags) : null;
+  const uuid = crypto.randomUUID();
 
   const result = await db.execute(
     `INSERT INTO tasks
-       (title, description, dimension, importance, urgency, position,
+       (uuid, title, description, dimension, importance, urgency, position,
         ddl_type, ddl_date, ddl_duration_days, ddl_set_at, tags)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
+      uuid,
       input.title,
       input.description ?? null,
       input.dimension,
@@ -111,13 +117,13 @@ export async function listActive(dimension?: Dimension): Promise<Task[]> {
   const rows = dimension
     ? await db.select<TaskRow[]>(
         `SELECT * FROM tasks
-          WHERE status = 'active' AND dimension = $1
+          WHERE status = 'active' AND deleted_at IS NULL AND dimension = $1
           ORDER BY importance DESC, urgency DESC, position ASC`,
         [dimension],
       )
     : await db.select<TaskRow[]>(
         `SELECT * FROM tasks
-          WHERE status = 'active'
+          WHERE status = 'active' AND deleted_at IS NULL
           ORDER BY importance DESC, urgency DESC, position ASC`,
       );
   return rows.map(rowToTask);
@@ -131,7 +137,7 @@ export async function listByQuadrant(
   const { importance, urgency } = flagsOfQuadrant(quadrant);
   const rows = await db.select<TaskRow[]>(
     `SELECT * FROM tasks
-      WHERE status = 'active' AND dimension = $1
+      WHERE status = 'active' AND deleted_at IS NULL AND dimension = $1
         AND importance = $2 AND urgency = $3
       ORDER BY position ASC`,
     [dimension, importance, urgency],
@@ -143,7 +149,7 @@ export async function listArchive(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<TaskRow[]>(
     `SELECT * FROM tasks
-      WHERE status IN ('completed', 'archived')
+      WHERE status IN ('completed', 'archived') AND deleted_at IS NULL
       ORDER BY completed_at DESC, updated_at DESC`,
   );
   return rows.map(rowToTask);
@@ -162,7 +168,13 @@ export async function completeTask(id: number): Promise<void> {
 
 export async function deleteTask(id: number): Promise<void> {
   const db = await getDb();
-  await db.execute(`DELETE FROM tasks WHERE id = $1`, [id]);
+  // Soft delete (tombstone) so the deletion propagates across synced devices;
+  // physical purge of old tombstones is left to a later GC step.
+  await db.execute(
+    `UPDATE tasks SET deleted_at = datetime('now'), updated_at = datetime('now')
+     WHERE id = $1`,
+    [id],
+  );
 }
 
 export interface ExportPayload {
@@ -174,7 +186,7 @@ export interface ExportPayload {
 export async function exportAll(): Promise<ExportPayload> {
   const db = await getDb();
   const rows = await db.select<TaskRow[]>(
-    `SELECT * FROM tasks ORDER BY id ASC`,
+    `SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY id ASC`,
   );
   return {
     version: 1,
@@ -196,11 +208,12 @@ export async function importTasks(
     try {
       await db.execute(
         `INSERT INTO tasks
-           (title, description, dimension, importance, urgency, position,
+           (uuid, title, description, dimension, importance, urgency, position,
             ddl_type, ddl_date, ddl_duration_days, ddl_set_at,
             status, tags, created_at, completed_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [
+          t.uuid || crypto.randomUUID(),
           t.title,
           t.description,
           t.dimension,
@@ -311,6 +324,115 @@ export async function reorderInQuadrant(
   await db.execute(
     `UPDATE tasks SET position = $1, updated_at = datetime('now') WHERE id = $2`,
     [newPos, id],
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 待定 (pending) inbox — rows written by the Feishu ingest CLI that could not
+// be auto-filed into a quadrant. The app lists them, lets the user triage one
+// into a real task (手动三联入象限), or dismiss it.
+// ---------------------------------------------------------------------------
+
+export interface PendingItem {
+  id: number;
+  uuid: string;
+  source: string;
+  source_chat_id: string | null;
+  source_chat_name: string | null;
+  source_message_id: string | null;
+  source_sender: string | null;
+  source_msg_ts: string | null;
+  raw_text: string;
+  guess_title: string;
+  guess_description: string | null;
+  guess_dimension: Dimension | null;
+  guess_importance: 0 | 1 | null;
+  guess_urgency: 0 | 1 | null;
+  guess_ddl_type: DDLType | null;
+  guess_ddl_date: string | null;
+  guess_ddl_duration_days: number | null;
+  confidence: number;
+  status: "pending" | "triaged" | "dismissed";
+  triaged_task_id: number | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+interface PendingRow {
+  id: number;
+  uuid: string;
+  source: string;
+  source_chat_id: string | null;
+  source_chat_name: string | null;
+  source_message_id: string | null;
+  source_sender: string | null;
+  source_msg_ts: string | null;
+  raw_text: string;
+  guess_title: string;
+  guess_description: string | null;
+  guess_dimension: Dimension | null;
+  guess_importance: number | null;
+  guess_urgency: number | null;
+  guess_ddl_type: "hard" | "soft" | null;
+  guess_ddl_date: string | null;
+  guess_ddl_duration_days: number | null;
+  confidence: number;
+  status: "pending" | "triaged" | "dismissed";
+  triaged_task_id: number | null;
+  created_at: string;
+  updated_at: string;
+  device_id: string | null;
+  deleted_at: string | null;
+}
+
+const toBit = (v: number | null): 0 | 1 | null =>
+  v == null ? null : ((v === 1 ? 1 : 0) as 0 | 1);
+
+const rowToPending = (r: PendingRow): PendingItem => ({
+  ...r,
+  guess_importance: toBit(r.guess_importance),
+  guess_urgency: toBit(r.guess_urgency),
+});
+
+export async function listPending(): Promise<PendingItem[]> {
+  const db = await getDb();
+  const rows = await db.select<PendingRow[]>(
+    `SELECT * FROM pending_items
+      WHERE status = 'pending' AND deleted_at IS NULL
+      ORDER BY confidence DESC, created_at DESC`,
+  );
+  return rows.map(rowToPending);
+}
+
+export async function countPending(): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM pending_items WHERE status = 'pending' AND deleted_at IS NULL`,
+  );
+  return rows[0]?.n ?? 0;
+}
+
+export async function triagePendingToTask(
+  pendingId: number,
+  taskId: number,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE pending_items
+       SET status = 'triaged', triaged_task_id = $1, updated_at = datetime('now')
+     WHERE id = $2`,
+    [taskId, pendingId],
+  );
+}
+
+export async function dismissPending(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE pending_items
+       SET status = 'dismissed', updated_at = datetime('now')
+     WHERE id = $1`,
+    [id],
   );
 }
 

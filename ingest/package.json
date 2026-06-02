@@ -1,0 +1,27 @@
+{
+  "name": "cadence-ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Daily Feishu → Claude → cadence SQLite ingest CLI",
+  "bin": {
+    "cadence-ingest": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "ingest": "node dist/cli.js",
+    "dry-run": "tsx src/cli.ts --dry-run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "better-sqlite3": "^11.8.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

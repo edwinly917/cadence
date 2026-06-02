@@ -12,6 +12,7 @@ import {
 
 const baseTask = (overrides: Partial<Task> = {}): Task => ({
   id: 1,
+  uuid: "00000000-0000-4000-8000-000000000001",
   title: "t",
   description: null,
   dimension: "work",
@@ -27,6 +28,7 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
   created_at: "2026-04-01T00:00:00Z",
   completed_at: null,
   updated_at: "2026-04-01T00:00:00Z",
+  deleted_at: null,
   ...overrides,
 });
 

@@ -1,0 +1,36 @@
+{
+  "messages": [
+    {
+      "message_id": "om_fixture_0001",
+      "chat_id": "oc_product",
+      "chat_name": "产品群",
+      "sender": "张伟",
+      "ts": "2026-06-01T06:30:00.000Z",
+      "text": "@你 下周三之前把 Q2 报销单交到财务,别忘了贴发票"
+    },
+    {
+      "message_id": "om_fixture_0002",
+      "chat_id": "oc_product",
+      "chat_name": "产品群",
+      "sender": "李娜",
+      "ts": "2026-06-01T07:05:00.000Z",
+      "text": "有空的时候看下那个竞品分析文档,不急"
+    },
+    {
+      "message_id": "om_fixture_0003",
+      "chat_id": "oc_family",
+      "chat_name": "家庭群",
+      "sender": "妈妈",
+      "ts": "2026-06-01T11:20:00.000Z",
+      "text": "周五晚上记得回家吃饭哦"
+    },
+    {
+      "message_id": "om_fixture_0004",
+      "chat_id": "oc_random",
+      "chat_name": "摸鱼群",
+      "sender": "王强",
+      "ts": "2026-06-01T12:00:00.000Z",
+      "text": "哈哈哈哈这个表情包太好笑了"
+    }
+  ]
+}

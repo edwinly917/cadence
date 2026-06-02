@@ -1,20 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { Task, Quadrant, Dimension } from "@/types";
+import { Task, Quadrant, Dimension, quadrantOf } from "@/types";
 import { QuadrantBoard } from "@/components/QuadrantBoard";
-import { TaskForm } from "@/components/TaskForm";
+import { TaskForm, PendingPrefill } from "@/components/TaskForm";
 import { ArchiveView } from "@/components/ArchiveView";
 import { CalendarView } from "@/components/CalendarView";
+import { PendingView } from "@/components/PendingView";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FocusTimer } from "@/components/FocusTimer";
-import { exportAll, importTasks, ExportPayload } from "@/lib/db";
+import {
+  exportAll,
+  importTasks,
+  ExportPayload,
+  PendingItem,
+  countPending,
+  triagePendingToTask,
+} from "@/lib/db";
 
 type DimFilter = Dimension | "all";
-type View = "board" | "calendar" | "archive";
+type View = "board" | "calendar" | "archive" | "pending";
 
 const VIEW_LABELS: Record<View, string> = {
   board: "看板",
   calendar: "日历",
   archive: "归档",
+  pending: "待定",
 };
 
 function App() {
@@ -27,9 +36,51 @@ function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<ExportPayload | null>(null);
   const [timerOpen, setTimerOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [triagePrefill, setTriagePrefill] = useState<PendingPrefill | null>(null);
+  const [triagingPendingId, setTriagingPendingId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const triggerRefresh = () => setRefreshKey((k) => k + 1);
+
+  useEffect(() => {
+    countPending().then(setPendingCount).catch(() => {});
+  }, [refreshKey]);
+
+  const clearTriage = () => {
+    setTriagingPendingId(null);
+    setTriagePrefill(null);
+  };
+
+  const handleTriage = (item: PendingItem) => {
+    setTriagingPendingId(item.id);
+    setTriagePrefill({
+      title: item.guess_title,
+      description: item.guess_description,
+      dimension: item.guess_dimension,
+      quadrant:
+        item.guess_importance != null && item.guess_urgency != null
+          ? quadrantOf(item.guess_importance, item.guess_urgency)
+          : null,
+      ddlType: item.guess_ddl_type ?? "none",
+      ddlDate: item.guess_ddl_date,
+      ddlDurationDays: item.guess_ddl_duration_days,
+    });
+    setEditingTask(null);
+    setCreating(true);
+  };
+
+  const handleSaved = async (createdTask?: Task) => {
+    if (triagingPendingId != null && createdTask) {
+      try {
+        await triagePendingToTask(triagingPendingId, createdTask.id);
+      } catch (e) {
+        showToast(`整理失败: ${String(e)}`);
+      }
+    }
+    clearTriage();
+    triggerRefresh();
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -37,12 +88,14 @@ function App() {
   };
 
   const handleNew = () => {
+    clearTriage();
     setDefaultQ("Q2");
     setEditingTask(null);
     setCreating(true);
   };
 
   const handleNewInQuadrant = (q: Quadrant) => {
+    clearTriage();
     setDefaultQ(q);
     setEditingTask(null);
     setCreating(true);
@@ -171,11 +224,11 @@ function App() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-lg bg-gray-100 p-0.5">
-            {(["board", "calendar", "archive"] as const).map((v) => (
+            {(["board", "calendar", "archive", "pending"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-3 py-1 text-sm transition ${
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-sm transition ${
                   view === v
                     ? "bg-white font-medium shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -183,6 +236,11 @@ function App() {
                 title={`${VIEW_LABELS[v]} (⌘E 在看板/归档间切换)`}
               >
                 {VIEW_LABELS[v]}
+                {v === "pending" && pendingCount > 0 && (
+                  <span className="rounded-full bg-amber-500 px-1.5 text-xs font-medium text-white">
+                    {pendingCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -257,6 +315,13 @@ function App() {
         {view === "archive" && (
           <ArchiveView refreshKey={refreshKey} onChanged={triggerRefresh} />
         )}
+        {view === "pending" && (
+          <PendingView
+            refreshKey={refreshKey}
+            onChanged={triggerRefresh}
+            onTriage={handleTriage}
+          />
+        )}
       </div>
 
       <TaskForm
@@ -264,11 +329,13 @@ function App() {
         task={editingTask}
         defaultQuadrant={defaultQ}
         defaultDimension={dimension === "all" ? "work" : dimension}
+        prefill={triagePrefill}
         onClose={() => {
           setCreating(false);
           setEditingTask(null);
+          clearTriage();
         }}
-        onSaved={triggerRefresh}
+        onSaved={handleSaved}
       />
 
       {toast && (
