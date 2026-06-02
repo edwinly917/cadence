@@ -15,6 +15,18 @@ pub fn run() {
             sql: include_str!("../migrations/002_soft_ddl_duration.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "pending_inbox_and_source_provenance",
+            sql: include_str!("../migrations/003_pending_inbox.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "sync_identity",
+            sql: include_str!("../migrations/004_sync_identity.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
