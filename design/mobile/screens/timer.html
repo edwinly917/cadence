@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cadence · 心流计时</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<div class="flex h-screen flex-col">
+
+  <header class="flex-shrink-0 border-b border-gray-200 bg-white px-4 pb-3 pt-12">
+    <h1 class="text-2xl font-semibold tracking-tight">心流计时</h1>
+    <p class="mt-0.5 text-xs text-gray-500">专注一段时间 · 白噪音相伴</p>
+  </header>
+
+  <main class="no-scrollbar flex-1 overflow-y-auto px-5 pb-24 pt-6">
+
+    <!-- Circular timer dial -->
+    <div class="flex flex-col items-center">
+      <div class="relative h-60 w-60">
+        <svg viewBox="0 0 200 200" class="h-full w-full -rotate-90">
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#e5e7eb" stroke-width="10" />
+          <!-- progress: full ring as design state -->
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#111827" stroke-width="10"
+                  stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="138" />
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span class="text-5xl font-light tracking-tight tabular-nums">25:00</span>
+          <span class="mt-1 text-xs text-gray-400">专注 · 第 2 段</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="mt-8 flex items-center gap-4">
+        <button class="flex h-12 w-12 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500" aria-label="重置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg" aria-label="开始/暂停">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="h-7 w-7"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="flex h-12 w-12 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500" aria-label="暂停">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Ambient sounds -->
+    <div class="mt-10">
+      <h2 class="mb-2 text-sm font-medium text-gray-700">环境音</h2>
+      <div class="space-y-2">
+        <button class="flex w-full items-center justify-between rounded-md border-2 border-gray-900 bg-gray-50 px-3 py-3 text-left">
+          <span class="text-sm font-medium">雷雨交夹,窝在沙发</span>
+          <svg viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4 text-gray-900"><path d="M20 6 9 17l-5-5"/></svg>
+        </button>
+        <button class="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-3 text-left">
+          <span class="text-sm text-gray-700">雨打琵琶,窗前写作</span>
+        </button>
+        <button class="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-3 text-left">
+          <span class="text-sm text-gray-700">海边听浪,放松身心</span>
+        </button>
+        <button class="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-3 text-left">
+          <span class="text-sm text-gray-700">春暖花开,阳台看书</span>
+        </button>
+        <button class="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-3 text-left">
+          <span class="text-sm text-gray-700">大雪飘飘,烤火练字</span>
+        </button>
+      </div>
+
+      <!-- Volume slider -->
+      <div class="mt-4 flex items-center gap-3">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5 flex-shrink-0 text-gray-400"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+        <input type="range" min="0" max="100" value="60" class="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-gray-200 accent-gray-900" />
+      </div>
+
+      <p class="mt-3 text-xs text-gray-400">白噪音按需加载</p>
+    </div>
+
+  </main>
+
+  <nav class="flex-shrink-0 border-t border-gray-200 bg-white/95 px-2 pb-6 pt-2 backdrop-blur">
+    <div class="flex items-stretch justify-around">
+      <a href="board.html" class="flex flex-1 flex-col items-center gap-0.5 py-1 text-gray-400"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="text-[10px]">看板</span></a>
+      <a href="calendar.html" class="flex flex-1 flex-col items-center gap-0.5 py-1 text-gray-400"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span class="text-[10px]">日历</span></a>
+      <a href="pending.html" class="relative flex flex-1 flex-col items-center gap-0.5 py-1 text-gray-400"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="absolute right-5 top-0 rounded-full bg-amber-500 px-1.5 text-[10px] font-medium text-white">3</span><span class="text-[10px]">待定</span></a>
+      <a href="archive.html" class="flex flex-1 flex-col items-center gap-0.5 py-1 text-gray-400"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M9 12h6"/></svg><span class="text-[10px]">归档</span></a>
+      <a href="timer.html" class="flex flex-1 flex-col items-center gap-0.5 py-1 text-gray-900"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span class="text-[10px] font-medium">计时</span></a>
+    </div>
+  </nav>
+
+</div>
+</body>
+</html>
