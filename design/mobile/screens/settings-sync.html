@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cadence · 同步设置</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<div class="flex h-screen flex-col">
+
+  <header class="flex-shrink-0 border-b border-gray-200 bg-white px-4 pb-3 pt-12">
+    <div class="flex items-center gap-2">
+      <a href="board.html" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="返回">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">设置与同步</h1>
+        <p class="mt-0.5 text-xs text-gray-500">多设备同步 · Turso / libSQL</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="no-scrollbar flex-1 space-y-6 overflow-y-auto px-4 py-4 pb-12">
+
+    <!-- 账户与同步 -->
+    <section>
+      <h2 class="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">账户与同步</h2>
+      <div class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-700">Turso 数据库 URL</label>
+          <input type="text" value="libsql://cadence-willy.turso.io"
+                 class="w-full rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-700">Auth Token</label>
+          <input type="password" value="eyJhbGciOiJFZERTQS-xxxxxxxxxxxx"
+                 class="w-full rounded-md border border-gray-300 px-3 py-2.5 text-sm tracking-widest outline-none focus:border-gray-900" />
+        </div>
+        <button class="w-full rounded bg-gray-900 py-2.5 text-sm font-medium text-white">连接</button>
+      </div>
+    </section>
+
+    <!-- 同步状态 -->
+    <section>
+      <h2 class="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">同步状态</h2>
+      <div class="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-sm text-gray-700">上次同步时间</span>
+          <span class="text-sm text-gray-500">刚刚</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-sm text-gray-700">待推送</span>
+          <span class="text-sm text-gray-500">0 条</span>
+        </div>
+        <div class="px-4 py-3">
+          <button class="w-full rounded border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700">立即同步</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 本设备 -->
+    <section>
+      <h2 class="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">本设备</h2>
+      <div class="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-sm text-gray-700">设备名称</span>
+          <span class="text-sm text-gray-500">Willy 的 iPhone</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-sm text-gray-700">设备 ID</span>
+          <span class="font-mono text-sm text-gray-500">d3f1·a92c</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 已连接设备 -->
+    <section>
+      <h2 class="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">已连接设备</h2>
+      <div class="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+        <div class="flex items-center justify-between px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-700">本机 Mac</span>
+            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600">当前</span>
+          </div>
+          <span class="text-xs text-gray-400">刚刚</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-sm text-gray-700">iPhone 15</span>
+          <span class="text-xs text-gray-400">2 分钟前</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-sm text-gray-700">iPad Air</span>
+          <span class="text-xs text-gray-400">昨天 21:48</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 退出登录 -->
+    <div class="pt-2 text-center">
+      <button class="text-sm font-medium text-red-600">退出登录</button>
+    </div>
+
+  </main>
+
+</div>
+</body>
+</html>

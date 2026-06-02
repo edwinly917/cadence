@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cadence · 苹果端设计稿 (iPhone + iPad)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+  <div class="mx-auto max-w-[1600px] px-6 py-10">
+
+    <!-- Title -->
+    <header class="mb-8">
+      <h1 class="text-3xl font-semibold tracking-tight">Cadence · 苹果端设计稿 (iPhone + iPad)</h1>
+      <p class="mt-2 text-sm text-gray-500">个人任务管理 · 工作 × 生活 × 四象限 · 可点击交互原型</p>
+
+      <!-- Quadrant color legend -->
+      <div class="mt-5 flex flex-wrap items-center gap-2 text-xs">
+        <span class="rounded bg-red-100 px-2 py-1 font-medium text-red-700">重要紧急 · 立即处理</span>
+        <span class="rounded bg-blue-100 px-2 py-1 font-medium text-blue-700">重要不紧急 · 持续投入</span>
+        <span class="rounded bg-gray-100 px-2 py-1 font-medium text-gray-600">不重要不紧急 · 考虑放弃</span>
+        <span class="rounded bg-yellow-100 px-2 py-1 font-medium text-yellow-700">紧急不重要 · 授权或快速处理</span>
+        <span class="rounded bg-amber-50 px-2 py-1 font-medium text-amber-700">软期限 / 硬期限 DDL</span>
+      </div>
+      <p class="mt-3 text-xs text-gray-400">提示:点击设备内的标签栏与按钮可在各页面间跳转。</p>
+    </header>
+
+    <!-- iPhone section -->
+    <section class="mb-14">
+      <h2 class="mb-6 text-lg font-semibold">iPhone (390 × 844)</h2>
+      <div class="flex flex-wrap gap-10">
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/board.html" title="看板"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">看板 (核心页)</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/task-form.html" title="新建任务"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">新建任务 (上拉表单)</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/calendar.html" title="日历"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">日历</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/pending.html" title="待定"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">待定 (飞书摄入收件箱)</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/archive.html" title="归档"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">归档 (按周分组)</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/timer.html" title="计时"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">心流计时</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-iphone"><div class="island"></div><div class="screen"><iframe src="screens/settings-sync.html" title="同步设置"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">设置与同步</figcaption>
+        </figure>
+
+      </div>
+    </section>
+
+    <!-- iPad section -->
+    <section>
+      <h2 class="mb-6 text-lg font-semibold">iPad (834 × 1194)</h2>
+      <div class="flex flex-wrap gap-12">
+
+        <figure class="flex flex-col items-center">
+          <div class="device-ipad"><div class="screen"><iframe src="screens/board-ipad.html" title="看板 iPad"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">看板 · 2×2 四象限</figcaption>
+        </figure>
+
+        <figure class="flex flex-col items-center">
+          <div class="device-ipad"><div class="screen"><iframe src="screens/calendar-ipad.html" title="日历 iPad"></iframe></div></div>
+          <figcaption class="mt-3 text-sm font-medium text-gray-600">日历 · 月视图 + 侧栏</figcaption>
+        </figure>
+
+      </div>
+    </section>
+
+  </div>
+
+</body>
+</html>
