@@ -6,6 +6,7 @@ import { ArchiveView } from "@/components/ArchiveView";
 import { CalendarView } from "@/components/CalendarView";
 import { PendingView } from "@/components/PendingView";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { SettingsSyncView } from "@/components/SettingsSyncView";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FocusTimer } from "@/components/FocusTimer";
 import {
@@ -18,13 +19,14 @@ import {
 } from "@/lib/db";
 
 type DimFilter = Dimension | "all";
-type View = "board" | "calendar" | "archive" | "pending";
+type View = "board" | "calendar" | "archive" | "pending" | "settings";
 
 const VIEW_LABELS: Record<View, string> = {
   board: "看板",
   calendar: "日历",
   archive: "归档",
   pending: "待定",
+  settings: "设置",
 };
 
 function App() {
@@ -265,6 +267,18 @@ function App() {
           )}
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setView("settings")}
+              className={`rounded border px-2.5 py-1.5 text-sm transition ${
+                view === "settings"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+              title="设置 / 同步"
+              aria-label="设置"
+            >
+              ⚙
+            </button>
+            <button
               onClick={handleImport}
               className="hidden rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 sm:block"
               title="从 JSON 文件导入"
@@ -323,6 +337,7 @@ function App() {
             onTriage={handleTriage}
           />
         )}
+        {view === "settings" && <SettingsSyncView />}
       </div>
 
       <MobileTabBar
