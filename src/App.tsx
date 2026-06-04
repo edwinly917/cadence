@@ -5,6 +5,7 @@ import { TaskForm, PendingPrefill } from "@/components/TaskForm";
 import { ArchiveView } from "@/components/ArchiveView";
 import { CalendarView } from "@/components/CalendarView";
 import { PendingView } from "@/components/PendingView";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FocusTimer } from "@/components/FocusTimer";
 import {
@@ -212,7 +213,7 @@ function App() {
           </div>
           <button
             onClick={() => setTimerOpen((v) => !v)}
-            className={`rounded border px-2.5 py-1 text-xs transition ${
+            className={`hidden rounded border px-2.5 py-1 text-xs transition sm:block ${
               timerOpen
                 ? "border-blue-500 bg-blue-50 text-blue-700"
                 : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
@@ -223,7 +224,7 @@ function App() {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-lg bg-gray-100 p-0.5">
+          <div className="hidden rounded-lg bg-gray-100 p-0.5 sm:flex">
             {(["board", "calendar", "archive", "pending"] as const).map((v) => (
               <button
                 key={v}
@@ -265,14 +266,14 @@ function App() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleImport}
-              className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="hidden rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 sm:block"
               title="从 JSON 文件导入"
             >
               导入
             </button>
             <button
               onClick={handleExport}
-              className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="hidden rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 sm:block"
               title="导出全部任务为 JSON"
             >
               导出
@@ -296,7 +297,7 @@ function App() {
         onChange={handleImportFile}
       />
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 pb-[calc(56px+env(safe-area-inset-bottom))] sm:pb-0">
         {view === "board" && (
           <QuadrantBoard
             dimension={dimension}
@@ -323,6 +324,14 @@ function App() {
           />
         )}
       </div>
+
+      <MobileTabBar
+        view={view}
+        pendingCount={pendingCount}
+        timerOpen={timerOpen}
+        onSelect={setView}
+        onToggleTimer={() => setTimerOpen((v) => !v)}
+      />
 
       <TaskForm
         open={formOpen}
