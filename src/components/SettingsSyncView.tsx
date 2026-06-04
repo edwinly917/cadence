@@ -143,6 +143,29 @@ export function SettingsSyncView() {
         <p className="mt-2 break-all text-xs text-gray-500">设备 ID:{deviceId}</p>
       </section>
 
+      {/* 实验性:数据引擎 */}
+      <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+        <h3 className="text-sm font-medium text-gray-700">实验性 · 数据引擎</h3>
+        <p className="mt-1 text-xs text-gray-500">
+          切到 libSQL 引擎后,本地读写经 libSQL,并可与 Turso 同步。默认关闭(用
+          tauri-plugin-sql)。切换后需重启应用生效。
+        </p>
+        <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            defaultChecked={localStorage.getItem("cadence.useLibsql") === "1"}
+            onChange={(e) => {
+              localStorage.setItem(
+                "cadence.useLibsql",
+                e.target.checked ? "1" : "0",
+              );
+              setNote("已切换数据引擎,请重启应用生效。");
+            }}
+          />
+          启用 libSQL 引擎(实验)
+        </label>
+      </section>
+
       {connected && (
         <button
           onClick={handleLogout}

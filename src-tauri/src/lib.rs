@@ -38,7 +38,12 @@ pub fn run() {
                 .add_migrations("sqlite:cadence.db", migrations)
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![db::db_sync])
+        .manage(db::LibsqlState::default())
+        .invoke_handler(tauri::generate_handler![
+            db::db_select,
+            db::db_execute,
+            db::db_sync
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
