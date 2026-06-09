@@ -13,6 +13,8 @@ export interface Config {
   lookbackHours: number;
   firstRunLookbackDays: number;
   maxMessagesPerRun: number;
+  /** Higher cap for the weekly roundup so a full busy week isn't truncated. */
+  weeklyMaxMessages: number;
   confidenceThreshold: number;
   requireDdlForAutofile: boolean;
   feishuFixture: string | null;
@@ -125,6 +127,7 @@ export function loadConfig(opts: { requireApiCreds?: boolean } = {}): Config {
     lookbackHours: num("LOOKBACK_HOURS", 26),
     firstRunLookbackDays: num("FIRST_RUN_LOOKBACK_DAYS", 7),
     maxMessagesPerRun: num("MAX_MESSAGES_PER_RUN", 500),
+    weeklyMaxMessages: num("WEEKLY_MAX_MESSAGES", 1500),
     confidenceThreshold: num("CONFIDENCE_THRESHOLD", 0.75),
     requireDdlForAutofile: bool("REQUIRE_DDL_FOR_AUTOFILE", true),
     feishuFixture: fixture,

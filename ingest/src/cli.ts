@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { runIngest } from "./ingest.js";
-import { runDigest } from "./digest.js";
+import { runDigest, runWeekly } from "./digest.js";
 import { loadConfig } from "./config.js";
 import { History } from "./history.js";
 
-type Command = "daily" | "digest" | "tasks" | "ingest";
+type Command = "daily" | "digest" | "tasks" | "ingest" | "weekly";
 
 function parseArgs(argv: string[]): {
   command: Command;
@@ -23,7 +23,10 @@ function parseArgs(argv: string[]): {
   }
   const positional = argv2.find((a) => !a.startsWith("-"));
   const command: Command =
-    positional === "digest" || positional === "tasks" || positional === "ingest"
+    positional === "digest" ||
+    positional === "tasks" ||
+    positional === "ingest" ||
+    positional === "weekly"
       ? positional
       : "daily";
   return {
@@ -38,12 +41,13 @@ function parseArgs(argv: string[]): {
 const HELP = `cadence-ingest — 飞书群 → Claude → cadence(每日摘要 + 指派任务录入)
 
 用法:
-  cadence-ingest [daily|digest|tasks|ingest] [--dry-run] [--force]
+  cadence-ingest [daily|digest|weekly|tasks|ingest] [--dry-run] [--force]
   cadence-ingest --history [N]
 
 子命令:
   daily            (默认) 先发群情报摘要,再扫描并录入指派给我的任务
   digest           只生成 DIGEST_CHAT_IDS 群的当天情报摘要并私信我
+  weekly           回顾上一周 DIGEST_CHAT_IDS 群,做全局汇总+精选链接并私信我
   tasks            只扫描 TASK_CHAT_IDS 群、抽取指派给我的任务写入 cadence
   ingest           遗留模式:按 readVia 拉取并抽取待办(api 模式读取所有群)
 
@@ -109,6 +113,14 @@ async function runDigestCmd(dryRun: boolean, force: boolean) {
   }
 }
 
+async function runWeeklyCmd(dryRun: boolean, force: boolean) {
+  const results = await runWeekly({ dryRun, force });
+  for (const r of results) {
+    if (r.sent) console.log(`每周汇总已发送: ${r.chatId}(${r.messages} 条消息）`);
+    else console.log(`每周汇总未发送: ${r.chatId} — ${r.skippedReason ?? "dry-run"}`);
+  }
+}
+
 async function main() {
   const { command, dryRun, force, help, history } = parseArgs(process.argv);
   if (help) {
@@ -127,6 +139,8 @@ async function main() {
   try {
     if (command === "digest") {
       await runDigestCmd(dryRun, force);
+    } else if (command === "weekly") {
+      await runWeeklyCmd(dryRun, force);
     } else if (command === "tasks") {
       await runTasks(dryRun);
     } else if (command === "ingest") {

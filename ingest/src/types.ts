@@ -15,6 +15,8 @@ export interface FeishuMessage {
   /** ISO8601 derived from Feishu create_time (ms epoch). */
   ts: string;
   text: string;
+  /** Total reaction/interaction count (populated only when fetched with reactions, e.g. weekly). */
+  reactions?: number;
 }
 
 /** What the Claude call must return per candidate todo. */

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd 模板:每周一 09:00 跑一次 `weekly`(回顾上一周、全局汇总 + 精选链接,私信本人)。
+  安装:
+    1. 先 `cd ingest && npm install && npm run build`,并配置好 .env(尤其 DIGEST_CHAT_IDS / NOTIFY_OPEN_ID)
+    2. node 路径换成绝对路径(`which node`;Apple Silicon 一般 /opt/homebrew/bin/node)
+    3. cp 本文件到 ~/Library/LaunchAgents/
+    4. launchctl load -w ~/Library/LaunchAgents/com.willyliu.cadence.weekly.plist
+    立即测试一次: launchctl kickstart -k gui/$(id -u)/com.willyliu.cadence.weekly
+  卸载: launchctl unload ~/Library/LaunchAgents/com.willyliu.cadence.weekly.plist
+  Weekday: 0/7=周日, 1=周一 … 6=周六
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.willyliu.cadence.weekly</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/Users/bytedance/Desktop/cadence/ingest/dist/cli.js</string>
+    <string>weekly</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/bytedance/Desktop/cadence/ingest</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/bytedance/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/bytedance/Desktop/cadence/ingest/state/weekly.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/bytedance/Desktop/cadence/ingest/state/weekly.err.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
