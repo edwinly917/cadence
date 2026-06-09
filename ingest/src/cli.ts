@@ -138,9 +138,21 @@ async function main() {
         );
       }
     } else {
-      // daily: digest first, then tasks
-      await runDigestCmd(dryRun, force);
-      await runTasks(dryRun);
+      // daily: digest + tasks, isolated so one failing doesn't block the other.
+      let failed = false;
+      try {
+        await runDigestCmd(dryRun, force);
+      } catch (e) {
+        failed = true;
+        console.error(`摘要失败: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      try {
+        await runTasks(dryRun);
+      } catch (e) {
+        failed = true;
+        console.error(`任务失败: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      if (failed) process.exitCode = 1;
     }
   } catch (e) {
     console.error(`运行失败: ${e instanceof Error ? e.message : String(e)}`);

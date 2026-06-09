@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  launchd 模板:每天 08:00 跑一次飞书摄入。
+  launchd 模板:每天 20:00 跑一次 `daily`(群情报摘要 + 指派任务录入)。
   安装:
-    1. 先 `cd ingest && npm install && npm run build`
-    2. 把下面的 <PATH-TO> 换成绝对路径(node 路径用 `which node` 查)
+    1. 先 `cd ingest && npm install && npm run build`,并配置好 .env
+    2. 把 node 路径换成绝对路径(`which node` 查;Apple Silicon 一般是 /opt/homebrew/bin/node)
     3. cp 本文件到 ~/Library/LaunchAgents/
-    4. launchctl load ~/Library/LaunchAgents/com.willyliu.cadence.ingest.plist
+    4. launchctl load -w ~/Library/LaunchAgents/com.willyliu.cadence.ingest.plist
+    立即测试一次: launchctl kickstart -k gui/$(id -u)/com.willyliu.cadence.ingest
   卸载: launchctl unload ~/Library/LaunchAgents/com.willyliu.cadence.ingest.plist
 -->
 <plist version="1.0">
@@ -15,17 +16,24 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/PATH-TO/node</string>
+    <string>/opt/homebrew/bin/node</string>
     <string>/Users/bytedance/Desktop/cadence/ingest/dist/cli.js</string>
+    <string>daily</string>
   </array>
 
   <key>WorkingDirectory</key>
   <string>/Users/bytedance/Desktop/cadence/ingest</string>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/bytedance/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key>
-    <integer>8</integer>
+    <integer>20</integer>
     <key>Minute</key>
     <integer>0</integer>
   </dict>
