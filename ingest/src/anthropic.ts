@@ -1,8 +1,14 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { Config } from "./config.js";
 import type { FeishuMessage, LlmCandidate, LlmResult } from "./types.js";
+import { completeJson } from "./llm.js";
 
 const BATCH_SIZE = 50;
+
+/** Optional "who is me" context so the LLM only extracts tasks assigned to a specific user. */
+export interface Assignee {
+  name: string | null;
+  openId: string | null;
+}
 
 const SYSTEM_PROMPT = `你是一个把飞书聊天消息抽取成个人待办的助手,服务于一个"四象限"任务管理工具。
 
@@ -75,17 +81,30 @@ function formatBatch(messages: FeishuMessage[]): string {
     .join("\n\n");
 }
 
-export class Classifier {
-  private client: Anthropic;
-  constructor(private cfg: Config) {
-    this.client = new Anthropic({ apiKey: cfg.anthropicApiKey });
-  }
+/** Extra system-prompt block constraining extraction to tasks assigned to a specific person. */
+function assigneeBlock(assignee: Assignee | undefined): string {
+  if (!assignee || (!assignee.name && !assignee.openId)) return "";
+  const who = [assignee.name && `名字「${assignee.name}」`, assignee.openId && `open_id ${assignee.openId}`]
+    .filter(Boolean)
+    .join(" / ");
+  return `\n\n【重要 · 指派过滤】我是 ${who}。本次只抽取**明确指派给我本人**的工作任务:
+- 命中条件:消息中 @我、点名我的名字、或上下文明确要求"我"去做某事(布置/交办/催办)。
+- 排除:别人之间的对话、未点名的泛泛通知、群公告、与我无关的事项、我自己随口说的非承诺。
+- 拿不准是否指派给我时,降低 confidence 或不抽取,绝不臆测。`;
+}
 
-  async classify(messages: FeishuMessage[], todayIso: string): Promise<LlmCandidate[]> {
+export class Classifier {
+  constructor(private cfg: Config) {}
+
+  async classify(
+    messages: FeishuMessage[],
+    todayIso: string,
+    assignee?: Assignee,
+  ): Promise<LlmCandidate[]> {
     const all: LlmCandidate[] = [];
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
       const batch = messages.slice(i, i + BATCH_SIZE);
-      const out = await this.classifyBatch(batch, todayIso);
+      const out = await this.classifyBatch(batch, todayIso, assignee);
       all.push(...out);
     }
     return all;
@@ -94,29 +113,13 @@ export class Classifier {
   private async classifyBatch(
     batch: FeishuMessage[],
     todayIso: string,
+    assignee?: Assignee,
   ): Promise<LlmCandidate[]> {
-    const resp = await this.client.messages.create({
-      model: this.cfg.anthropicModel,
-      max_tokens: 4096,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      tools: [TOOL],
-      tool_choice: { type: "tool", name: "emit_candidates" },
-      messages: [
-        {
-          role: "user",
-          content: `今天是 ${todayIso}(用于解析"下周三""月底"等相对时间)。\n\n以下是飞书消息:\n\n${formatBatch(batch)}`,
-        },
-      ],
+    const result = await completeJson<LlmResult>(this.cfg, {
+      system: SYSTEM_PROMPT + assigneeBlock(assignee),
+      user: `今天是 ${todayIso}(用于解析"下周三""月底"等相对时间)。\n\n以下是飞书消息:\n\n${formatBatch(batch)}`,
+      tool: TOOL,
     });
-    const toolUse = resp.content.find((b) => b.type === "tool_use");
-    if (!toolUse || toolUse.type !== "tool_use") return [];
-    const result = toolUse.input as LlmResult;
-    return result.candidates ?? [];
+    return result?.candidates ?? [];
   }
 }

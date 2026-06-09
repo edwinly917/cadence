@@ -1,6 +1,7 @@
 import type { Config } from "./config.js";
-import { makeFeishuClient } from "./feishu.js";
-import { Classifier } from "./anthropic.js";
+import { makeFeishuClient, type FeishuClient } from "./feishu.js";
+import { Classifier, type Assignee } from "./anthropic.js";
+import { LarkCliClient, sendMarkdownToUser } from "./larkcli.js";
 import { decide, enrich } from "./classify.js";
 import { CadenceDb } from "./sqlite.js";
 import { Watermark } from "./watermark.js";
@@ -16,6 +17,42 @@ export interface IngestSummary {
   pending: number;
   skippedDuplicate: number;
   dryRun: boolean;
+  /** Newly recorded items (status="new"), for notification. */
+  newItems: HistoryItem[];
+}
+
+export interface RunIngestOptions {
+  dryRun: boolean;
+  /** Restrict reading to these chat ids (used with readVia=larkcli). */
+  chatIds?: string[];
+  /** Only extract tasks assigned to this person. */
+  assignee?: Assignee;
+  /** Short label for logs/notifications, e.g. "工作群任务". */
+  label?: string;
+  /** DM a summary of recorded tasks to NOTIFY_OPEN_ID. */
+  notify?: boolean;
+}
+
+function makeClient(cfg: Config, chatIds?: string[]): FeishuClient {
+  if (cfg.feishuFixture) return makeFeishuClient(cfg); // FixtureClient
+  if (cfg.readVia === "larkcli") {
+    return new LarkCliClient(cfg, chatIds && chatIds.length ? chatIds : cfg.taskChatIds);
+  }
+  return makeFeishuClient(cfg); // legacy tenant-token LiveClient (reads all chats)
+}
+
+function notifyMarkdown(label: string, day: string, summary: IngestSummary): string {
+  const lines: string[] = [];
+  lines.push(`**✅ cadence 任务录入 · ${label} · ${day}**`);
+  lines.push(
+    `入象限 ${summary.autoFiled} · 待定 ${summary.pending}（扫描 ${summary.messages} 条消息）`,
+  );
+  for (const it of summary.newItems) {
+    const tag = it.action === "auto-file" ? "✅入象限" : "📥待定";
+    const meta = [it.dimension, it.ddl, it.source].filter(Boolean).join(" · ");
+    lines.push(`- ${tag}「${it.title}」${meta ? " — " + meta : ""}`);
+  }
+  return lines.join("\n");
 }
 
 function computeWindow(cfg: Config, watermark: Watermark, now: Date): { since: Date; until: Date } {
@@ -39,19 +76,19 @@ function ddlText(c: LlmCandidate): string | null {
   return null;
 }
 
-export async function runIngest(opts: { dryRun: boolean }): Promise<IngestSummary> {
-  // dry-run still classifies (needs Anthropic) but never opens/writes the DB.
+export async function runIngest(opts: RunIngestOptions): Promise<IngestSummary> {
+  // dry-run still classifies but never opens/writes the DB.
   const cfg = (await import("./config.js")).loadConfig({ requireApiCreds: true });
   const now = new Date();
   const watermark = new Watermark(cfg.stateDir);
   const { since, until } = computeWindow(cfg, watermark, now);
 
-  const client = makeFeishuClient(cfg);
+  const client = makeClient(cfg, opts.chatIds);
   const messages = await client.fetchMessages(since, until, cfg.maxMessagesPerRun);
 
   const classifier = new Classifier(cfg);
   const todayIso = now.toISOString().slice(0, 10);
-  const candidates = await classifier.classify(messages, todayIso);
+  const candidates = await classifier.classify(messages, todayIso, opts.assignee);
 
   const enriched = enrich(candidates, messages);
   const decisions = enriched.map((e) => decide(e, cfg));
@@ -65,6 +102,7 @@ export async function runIngest(opts: { dryRun: boolean }): Promise<IngestSummar
     pending: 0,
     skippedDuplicate: 0,
     dryRun: opts.dryRun,
+    newItems: [],
   };
 
   if (opts.dryRun) {
@@ -88,7 +126,7 @@ export async function runIngest(opts: { dryRun: boolean }): Promise<IngestSummar
   const recordItem = (d: Decision, status: "new" | "duplicate") => {
     const c = d.enriched.candidate;
     const m = firstMsg(d);
-    items.push({
+    const item: HistoryItem = {
       action: d.action,
       status,
       title: c.title,
@@ -98,7 +136,9 @@ export async function runIngest(opts: { dryRun: boolean }): Promise<IngestSummar
       urgency: c.urgency,
       ddl: ddlText(c),
       source: m ? `${m.chat_name ?? m.chat_id}${m.sender ? " · " + m.sender : ""}` : null,
-    });
+    };
+    items.push(item);
+    if (status === "new") summary.newItems.push(item);
   };
 
   const db = new CadenceDb(cfg.dbPath);
@@ -200,6 +240,16 @@ export async function runIngest(opts: { dryRun: boolean }): Promise<IngestSummar
     });
   } finally {
     db.close();
+  }
+
+  // Notify the user (bot DM) of newly recorded tasks.
+  if (opts.notify && cfg.notifyOpenId && summary.newItems.length > 0) {
+    try {
+      const day = now.toISOString().slice(0, 10);
+      sendMarkdownToUser(cfg, cfg.notifyOpenId, notifyMarkdown(opts.label ?? "任务", day, summary));
+    } catch (e) {
+      console.error(`发送任务通知失败: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   return summary;
