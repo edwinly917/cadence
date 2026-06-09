@@ -165,7 +165,27 @@ export async function runIngest(opts: { dryRun: boolean }): Promise<IngestSummar
     });
 
     // Advance watermark only after the write phase fully succeeds.
-    watermark.write(until);
+    //
+    // If the fetch hit `maxMessagesPerRun`, there are almost certainly more
+    // messages between the last one we processed and `until`. Advancing all the
+    // way to `until` would push those past the next window's start and skip them
+    // forever. So when the batch is capped, only advance to the latest message
+    // we actually processed; the `lookbackHours` overlap + dedupe then pick up
+    // any stragglers on the following run. (Messages are concatenated per-chat
+    // rather than globally time-ordered, so this is "best forward progress
+    // without skipping the bulk" — the overlap window covers the rest.)
+    const capped = messages.length >= cfg.maxMessagesPerRun;
+    let watermarkTo = until;
+    if (capped && messages.length > 0) {
+      const latestTs = messages.reduce((max, m) => {
+        const t = new Date(m.ts).getTime();
+        return Number.isNaN(t) ? max : Math.max(max, t);
+      }, 0);
+      if (latestTs > 0 && latestTs < until.getTime()) {
+        watermarkTo = new Date(latestTs);
+      }
+    }
+    watermark.write(watermarkTo);
     // Track what this daily scan found (machine + human readable ledgers).
     new History(cfg.stateDir).append({
       ranAt: nowIso,

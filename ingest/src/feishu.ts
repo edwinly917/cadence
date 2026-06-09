@@ -65,17 +65,17 @@ export interface FeishuClient {
 /** Reads pre-normalized messages from a JSON fixture for offline testing. */
 class FixtureClient implements FeishuClient {
   constructor(private path: string) {}
-  async fetchMessages(since: Date, until: Date, max: number): Promise<FeishuMessage[]> {
+  // Fixtures are for offline testing/demos. We deliberately ignore the
+  // [since, until] window: the fixture timestamps are fixed, so applying the
+  // default lookback filter would silently age the samples out (returning zero
+  // messages) once "now" drifts past the window. Tests/demos want the sample
+  // set to be deterministic regardless of the current date.
+  async fetchMessages(_since: Date, _until: Date, max: number): Promise<FeishuMessage[]> {
     const raw = JSON.parse(fs.readFileSync(this.path, "utf8")) as
       | { messages: FeishuMessage[] }
       | FeishuMessage[];
     const all = Array.isArray(raw) ? raw : raw.messages;
-    return all
-      .filter((m) => {
-        const t = new Date(m.ts).getTime();
-        return t >= since.getTime() && t <= until.getTime();
-      })
-      .slice(0, max);
+    return all.slice(0, max);
   }
 }
 

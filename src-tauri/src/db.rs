@@ -194,6 +194,40 @@ async fn migrate(conn: &Connection) -> Result<(), String> {
     )
     .await
     .map_err(|e| e.to_string())?;
+
+    // 005 customizable two-level categories (mirrors migrations/005_categories.sql).
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS categories (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           uuid TEXT NOT NULL UNIQUE,
+           parent_uuid TEXT,
+           kind TEXT NOT NULL,
+           name TEXT NOT NULL,
+           is_preset INTEGER NOT NULL DEFAULT 0,
+           position REAL NOT NULL DEFAULT 1000,
+           created_at TEXT NOT NULL DEFAULT (datetime('now')),
+           updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+           deleted_at TEXT
+         );
+         CREATE INDEX IF NOT EXISTS idx_categories_alive ON categories(deleted_at, kind, parent_uuid, position);",
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    add_column_if_missing(conn, "tasks", "subcategory_uuid", "TEXT").await?;
+    conn.execute_batch(
+        "CREATE INDEX IF NOT EXISTS idx_tasks_subcategory ON tasks(subcategory_uuid) WHERE subcategory_uuid IS NOT NULL;",
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT OR IGNORE INTO categories (uuid, parent_uuid, kind, name, is_preset, position) VALUES
+           ('00000000-0000-4000-8000-000000000001', NULL, 'work', '工作', 1, 1000),
+           ('00000000-0000-4000-8000-000000000002', NULL, 'life', '生活', 1, 2000)",
+        (),
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -275,10 +309,24 @@ pub async fn db_execute(
     })
 }
 
-/// Pull/push the embedded replica against the Turso primary.
+/// Pull/push the app's embedded replica against the Turso primary.
+///
+/// Critically, this opens the SAME `cadence.db` that `db_select`/`db_execute`
+/// read and write, as an embedded remote replica, and then keeps that synced
+/// handle as the live connection in `LibsqlState`. Previously this synced a
+/// separate `cadence-replica.db` that the UI never read, so pressing “立即同步”
+/// updated `lastSyncedAt` without ever pushing local data or pulling remote
+/// data into the database the app actually displays.
+///
+/// NOTE: a libSQL file may be held open by only one `Database` at a time, so we
+/// drop any existing (local) handle before adopting the file as a replica.
+/// First-sync reconciliation of data written before adoption against an empty
+/// primary should be verified against a real Turso instance before relying on
+/// it; this path is gated behind the off-by-default libSQL engine.
 #[tauri::command]
 pub async fn db_sync(
     app: tauri::AppHandle,
+    state: State<'_, LibsqlState>,
     url: String,
     token: String,
     device_id: String,
@@ -288,16 +336,33 @@ pub async fn db_sync(
         .app_config_dir()
         .map_err(|e| format!("无法定位 app 数据目录: {e}"))?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let replica_path = dir.join("cadence-replica.db");
-    let db = Builder::new_remote_replica(replica_path, url, token)
+    let path = dir.join("cadence.db");
+
+    let mut guard = state.inner.lock().await;
+    // Release any existing local handle so the file is free to be reopened as a
+    // replica. On error below the state stays None and the next db_select call
+    // reopens it locally via ensure_open.
+    *guard = None;
+
+    let db = Builder::new_remote_replica(path, url, token)
         .build()
         .await
         .map_err(|e| format!("打开 libSQL 副本失败: {e}"))?;
     let rep = db.sync().await.map_err(|e| format!("同步失败: {e}"))?;
     let conn = db.connect().map_err(|e| e.to_string())?;
+    // Remote may be brand new / behind on schema; bring it up to date.
+    migrate(&conn).await?;
     conn.query("SELECT 1", ())
         .await
         .map_err(|e| format!("校验查询失败: {e}"))?;
+
+    // Keep the synced replica as the live handle so subsequent reads/writes go
+    // through it (and get pushed on the next sync).
+    *guard = Some(Handle {
+        db: Arc::new(db),
+        conn,
+    });
+
     Ok(format!(
         "device={device_id} synced (frame_no={:?})",
         rep.frame_no()
