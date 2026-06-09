@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Task, Quadrant, Dimension, quadrantOf } from "@/types";
+import { Task, Quadrant, quadrantOf } from "@/types";
+import { DimensionFilter, DimFilter } from "@/components/DimensionFilter";
 import { QuadrantBoard } from "@/components/QuadrantBoard";
 import { TaskForm, PendingPrefill } from "@/components/TaskForm";
 import { ArchiveView } from "@/components/ArchiveView";
@@ -18,7 +19,6 @@ import {
   triagePendingToTask,
 } from "@/lib/db";
 
-type DimFilter = Dimension | "all";
 type View = "board" | "calendar" | "archive" | "pending" | "settings";
 
 const VIEW_LABELS: Record<View, string> = {
@@ -32,6 +32,7 @@ const VIEW_LABELS: Record<View, string> = {
 function App() {
   const [view, setView] = useState<View>("board");
   const [dimension, setDimension] = useState<DimFilter>("all");
+  const [subFilter, setSubFilter] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [creating, setCreating] = useState(false);
   const [defaultQ, setDefaultQ] = useState<Quadrant>("Q2");
@@ -188,6 +189,7 @@ function App() {
         ["1", "2", "3"].includes(e.key)
       ) {
         e.preventDefault();
+        setSubFilter(null);
         if (e.key === "1") setDimension("all");
         if (e.key === "2") setDimension("work");
         if (e.key === "3") setDimension("life");
@@ -248,22 +250,14 @@ function App() {
             ))}
           </div>
           {(view === "board" || view === "calendar") && (
-            <div className="flex rounded-lg bg-gray-100 p-0.5">
-              {(["all", "work", "life"] as const).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDimension(d)}
-                  className={`rounded-md px-3 py-1 text-sm transition ${
-                    dimension === d
-                      ? "bg-white font-medium shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  title={`${d === "all" ? "全部 ⌘1" : d === "work" ? "工作 ⌘2" : "生活 ⌘3"}`}
-                >
-                  {d === "all" ? "全部" : d === "work" ? "工作" : "生活"}
-                </button>
-              ))}
-            </div>
+            <DimensionFilter
+              dimension={dimension}
+              subFilter={subFilter}
+              onChange={(d, sub) => {
+                setDimension(d);
+                setSubFilter(sub);
+              }}
+            />
           )}
           <div className="flex items-center gap-2">
             <button
@@ -315,6 +309,7 @@ function App() {
         {view === "board" && (
           <QuadrantBoard
             dimension={dimension}
+            subFilter={subFilter}
             onEditTask={setEditingTask}
             onAddInQuadrant={handleNewInQuadrant}
             refreshKey={refreshKey}
@@ -323,6 +318,7 @@ function App() {
         {view === "calendar" && (
           <CalendarView
             dimension={dimension}
+            subFilter={subFilter}
             onEditTask={setEditingTask}
             refreshKey={refreshKey}
           />

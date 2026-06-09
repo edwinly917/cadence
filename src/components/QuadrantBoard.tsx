@@ -71,6 +71,7 @@ const LAYOUT_ORDER: Quadrant[] = ["Q2", "Q1", "Q3", "Q4"];
 
 interface Props {
   dimension: Dimension | "all";
+  subFilter?: string | null;
   onEditTask: (task: Task) => void;
   onAddInQuadrant: (q: Quadrant) => void;
   refreshKey: number;
@@ -147,6 +148,7 @@ function QuadrantSection({
 
 export function QuadrantBoard({
   dimension,
+  subFilter = null,
   onEditTask,
   onAddInQuadrant,
   refreshKey,
@@ -164,6 +166,7 @@ export function QuadrantBoard({
       setError(null);
       const data = await listActive(
         dimension === "all" ? undefined : dimension,
+        subFilter,
       );
       setTasks(data);
     } catch (e) {
@@ -173,7 +176,7 @@ export function QuadrantBoard({
 
   useEffect(() => {
     refresh();
-  }, [dimension, refreshKey]);
+  }, [dimension, subFilter, refreshKey]);
 
   const handleComplete = async (id: number) => {
     try {

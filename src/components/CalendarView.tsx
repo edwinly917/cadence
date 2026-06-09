@@ -23,6 +23,7 @@ function softColor(taskId: number): string {
 
 interface Props {
   dimension: Dimension | "all";
+  subFilter?: string | null;
   onEditTask: (task: Task) => void;
   refreshKey: number;
 }
@@ -89,7 +90,7 @@ function bucketTasks(day: Date, tasks: Task[]): DayBuckets {
   return { hard, softStart, softMiddle, softEnd, softSingle };
 }
 
-export function CalendarView({ dimension, onEditTask, refreshKey }: Props) {
+export function CalendarView({ dimension, subFilter = null, onEditTask, refreshKey }: Props) {
   const today = useMemo(() => midnight(new Date()), []);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -101,7 +102,10 @@ export function CalendarView({ dimension, onEditTask, refreshKey }: Props) {
     (async () => {
       try {
         setError(null);
-        const data = await listActive(dimension === "all" ? undefined : dimension);
+        const data = await listActive(
+          dimension === "all" ? undefined : dimension,
+          subFilter,
+        );
         if (active) setTasks(data);
       } catch (e) {
         if (active) setError(String(e));
@@ -110,7 +114,7 @@ export function CalendarView({ dimension, onEditTask, refreshKey }: Props) {
     return () => {
       active = false;
     };
-  }, [dimension, refreshKey]);
+  }, [dimension, subFilter, refreshKey]);
 
   const cells = useMemo(
     () => buildMonthGrid(viewYear, viewMonth),

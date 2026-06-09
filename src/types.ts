@@ -9,6 +9,7 @@ export interface Task {
   title: string;
   description: string | null;
   dimension: Dimension;
+  subcategory_uuid: string | null;
   importance: 0 | 1;
   urgency: 0 | 1;
   position: number;
@@ -28,6 +29,7 @@ export interface NewTaskInput {
   title: string;
   description?: string | null;
   dimension: Dimension;
+  subcategory_uuid?: string | null;
   importance: 0 | 1;
   urgency: 0 | 1;
   ddl_type?: DDLType | null;
@@ -35,6 +37,23 @@ export interface NewTaskInput {
   ddl_duration_days?: number | null;
   ddl_set_at?: string | null;
   tags?: string[] | null;
+}
+
+// A user-customizable category. Top-level rows (parent_uuid === null) are the
+// renamable "工作/生活" anchors; their `kind` is the stable enum value that
+// tasks.dimension stores. Sub-categories hang off a top-level via parent_uuid
+// and are referenced by tasks.subcategory_uuid.
+export interface Category {
+  id: number;
+  uuid: string;
+  parent_uuid: string | null;
+  kind: Dimension;
+  name: string;
+  is_preset: 0 | 1;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 export const quadrantOf = (

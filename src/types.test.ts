@@ -16,6 +16,7 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
   title: "t",
   description: null,
   dimension: "work",
+  subcategory_uuid: null,
   importance: 1,
   urgency: 0,
   position: 1000,

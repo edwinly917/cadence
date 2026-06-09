@@ -8,6 +8,7 @@ import {
   currentStatus,
   syncNow,
 } from "@/lib/sync";
+import { CategoryManager } from "./CategoryManager";
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "从未";
@@ -78,6 +79,8 @@ export function SettingsSyncView() {
           {note}
         </div>
       )}
+
+      <CategoryManager />
 
       {/* 账户与同步 */}
       <section className="mt-5 rounded-lg border border-gray-200 bg-white p-4">

@@ -29,6 +29,12 @@ pub fn run() {
             sql: include_str!("../migrations/004_sync_identity.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "customizable_categories",
+            sql: include_str!("../migrations/005_categories.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

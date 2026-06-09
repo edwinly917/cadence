@@ -1,5 +1,6 @@
 import { Task, isAutoPromoted } from "@/types";
 import { formatDDL, formatSoftDDL } from "@/lib/ddl";
+import { useCategories } from "@/lib/categoriesContext";
 
 interface Props {
   task: Task;
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function TaskCard({ task, onClick, onComplete }: Props) {
+  const { subLabel } = useCategories();
+  const subName = subLabel(task.subcategory_uuid);
   const isHard = task.ddl_type === "hard";
   const isSoft = task.ddl_type === "soft";
   const hardDDL = isHard && task.ddl_date ? formatDDL(task.ddl_date) : null;
@@ -40,6 +43,11 @@ export function TaskCard({ task, onClick, onComplete }: Props) {
           <div className="break-words text-sm leading-snug text-gray-900">
             {task.title}
           </div>
+          {subName && (
+            <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+              {subName}
+            </span>
+          )}
           {task.description && (
             <div className="mt-1 line-clamp-2 text-xs text-gray-500">
               {task.description}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { quadrantOf } from "@/types";
 import { PendingItem, listPending, dismissPending } from "@/lib/db";
+import { useCategories } from "@/lib/categoriesContext";
 
 interface Props {
   refreshKey: number;
@@ -33,6 +34,7 @@ function guessDdlText(item: PendingItem): string | null {
 }
 
 export function PendingView({ refreshKey, onChanged, onTriage }: Props) {
+  const { labelOf } = useCategories();
   const [items, setItems] = useState<PendingItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -104,7 +106,7 @@ export function PendingView({ refreshKey, onChanged, onTriage }: Props) {
                       </span>
                       {item.guess_dimension && (
                         <span className="text-xs text-gray-400">
-                          {item.guess_dimension === "work" ? "工作" : "生活"}
+                          {labelOf(item.guess_dimension)}
                         </span>
                       )}
                       {ddl && (

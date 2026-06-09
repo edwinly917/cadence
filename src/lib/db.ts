@@ -6,6 +6,7 @@ import {
   Dimension,
   DDLType,
   NewTaskInput,
+  Category,
   flagsOfQuadrant,
 } from "@/types";
 import {
@@ -69,6 +70,7 @@ interface TaskRow {
   title: string;
   description: string | null;
   dimension: Dimension;
+  subcategory_uuid: string | null;
   importance: number;
   urgency: number;
   position: number;
@@ -125,14 +127,15 @@ export async function addTask(input: NewTaskInput): Promise<Task> {
 
   const result = await db.execute(
     `INSERT INTO tasks
-       (uuid, title, description, dimension, importance, urgency, position,
+       (uuid, title, description, dimension, subcategory_uuid, importance, urgency, position,
         ddl_type, ddl_date, ddl_duration_days, ddl_set_at, tags)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
     [
       uuid,
       input.title,
       input.description ?? null,
       input.dimension,
+      input.subcategory_uuid ?? null,
       input.importance,
       input.urgency,
       nextPos,
@@ -151,20 +154,27 @@ export async function addTask(input: NewTaskInput): Promise<Task> {
   return rowToTask(rows[0]);
 }
 
-export async function listActive(dimension?: Dimension): Promise<Task[]> {
+export async function listActive(
+  dimension?: Dimension,
+  subcategoryUuid?: string | null,
+): Promise<Task[]> {
   const db = await getDb();
-  const rows = dimension
-    ? await db.select<TaskRow[]>(
-        `SELECT * FROM tasks
-          WHERE status = 'active' AND deleted_at IS NULL AND dimension = $1
-          ORDER BY importance DESC, urgency DESC, position ASC`,
-        [dimension],
-      )
-    : await db.select<TaskRow[]>(
-        `SELECT * FROM tasks
-          WHERE status = 'active' AND deleted_at IS NULL
-          ORDER BY importance DESC, urgency DESC, position ASC`,
-      );
+  const where = ["status = 'active'", "deleted_at IS NULL"];
+  const params: unknown[] = [];
+  if (dimension) {
+    params.push(dimension);
+    where.push(`dimension = $${params.length}`);
+  }
+  if (subcategoryUuid) {
+    params.push(subcategoryUuid);
+    where.push(`subcategory_uuid = $${params.length}`);
+  }
+  const rows = await db.select<TaskRow[]>(
+    `SELECT * FROM tasks
+      WHERE ${where.join(" AND ")}
+      ORDER BY importance DESC, urgency DESC, position ASC`,
+    params,
+  );
   return rows.map(rowToTask);
 }
 
@@ -217,9 +227,12 @@ export async function deleteTask(id: number): Promise<void> {
 }
 
 export interface ExportPayload {
-  version: 1;
+  // v1: tasks only. v2: also carries the custom category tree + per-task
+  // subcategory_uuid. Imports still accept v1 (no categories) for old files.
+  version: 1 | 2;
   exportedAt: string;
   tasks: Task[];
+  categories?: Category[];
 }
 
 export async function exportAll(): Promise<ExportPayload> {
@@ -227,35 +240,73 @@ export async function exportAll(): Promise<ExportPayload> {
   const rows = await db.select<TaskRow[]>(
     `SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY id ASC`,
   );
+  const categories = await db.select<Category[]>(
+    `SELECT * FROM categories WHERE deleted_at IS NULL ORDER BY id ASC`,
+  );
   return {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     tasks: rows.map(rowToTask),
+    categories,
   };
 }
 
 export async function importTasks(
   payload: ExportPayload,
 ): Promise<{ inserted: number; skipped: number }> {
-  if (payload.version !== 1) {
+  if (payload.version !== 1 && payload.version !== 2) {
     throw new Error(`不支持的导出版本: ${payload.version}`);
   }
   const db = await getDb();
+
+  // Upsert the category tree first so imported tasks can resolve their
+  // subcategory_uuid. Renames win (the import is the user's intent); presets
+  // are matched by their fixed uuid so they're updated, not duplicated.
+  for (const c of payload.categories ?? []) {
+    try {
+      await db.execute(
+        `INSERT INTO categories
+           (uuid, parent_uuid, kind, name, is_preset, position, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT(uuid) DO UPDATE SET
+           parent_uuid = excluded.parent_uuid,
+           kind = excluded.kind,
+           name = excluded.name,
+           position = excluded.position,
+           updated_at = excluded.updated_at,
+           deleted_at = NULL`,
+        [
+          c.uuid,
+          c.parent_uuid,
+          c.kind,
+          c.name,
+          c.is_preset,
+          c.position,
+          c.created_at,
+          c.updated_at,
+        ],
+      );
+    } catch {
+      // Non-fatal: a malformed category row shouldn't block task import.
+    }
+  }
+
   let inserted = 0;
   let skipped = 0;
   for (const t of payload.tasks) {
     try {
       await db.execute(
         `INSERT INTO tasks
-           (uuid, title, description, dimension, importance, urgency, position,
+           (uuid, title, description, dimension, subcategory_uuid, importance, urgency, position,
             ddl_type, ddl_date, ddl_duration_days, ddl_set_at,
             status, tags, created_at, completed_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
           t.uuid || crypto.randomUUID(),
           t.title,
           t.description,
           t.dimension,
+          t.subcategory_uuid ?? null,
           t.importance,
           t.urgency,
           t.position,
@@ -519,6 +570,7 @@ export async function updateTask(
     "title",
     "description",
     "dimension",
+    "subcategory_uuid",
     "ddl_type",
     "ddl_date",
     "ddl_duration_days",

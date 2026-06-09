@@ -8,6 +8,7 @@ import {
   flagsOfQuadrant,
 } from "@/types";
 import { addTask, updateTask, deleteTask } from "@/lib/db";
+import { useCategories } from "@/lib/categoriesContext";
 import { SOFT_DURATION_PRESETS, softDurationLabel } from "@/lib/ddl";
 import { DatePicker } from "./DatePicker";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -67,10 +68,12 @@ export function TaskForm({
   onSaved,
 }: Props) {
   const editing = !!task;
+  const { labelOf, subsOf } = useCategories();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dimension, setDimension] = useState<Dimension>("work");
+  const [subcategoryUuid, setSubcategoryUuid] = useState<string | null>(null);
   const [quadrant, setQuadrant] = useState<Quadrant>("Q2");
   const [ddlType, setDdlType] = useState<DDLType | "none">("none");
   const [ddlDate, setDdlDate] = useState("");
@@ -86,6 +89,7 @@ export function TaskForm({
       setTitle(task.title);
       setDescription(task.description ?? "");
       setDimension(task.dimension);
+      setSubcategoryUuid(task.subcategory_uuid ?? null);
       setQuadrant(quadrantOf(task.importance, task.urgency));
       setDdlType((task.ddl_type ?? "none") as DDLType | "none");
       setDdlDate(task.ddl_date ? task.ddl_date.slice(0, 10) : "");
@@ -97,6 +101,7 @@ export function TaskForm({
       setTitle(prefill.title);
       setDescription(prefill.description ?? "");
       setDimension(prefill.dimension ?? defaultDimension ?? "work");
+      setSubcategoryUuid(null);
       setQuadrant(prefill.quadrant ?? defaultQuadrant ?? "Q2");
       setDdlType(prefill.ddlType);
       setDdlDate(prefill.ddlDate ? prefill.ddlDate.slice(0, 10) : "");
@@ -107,6 +112,7 @@ export function TaskForm({
       setTitle("");
       setDescription("");
       setDimension(defaultDimension ?? "work");
+      setSubcategoryUuid(null);
       setQuadrant(defaultQuadrant ?? "Q2");
       setDdlType("none");
       setDdlDate("");
@@ -138,6 +144,7 @@ export function TaskForm({
         title: title.trim(),
         description: description.trim() || null,
         dimension,
+        subcategory_uuid: subcategoryUuid,
         importance,
         urgency,
         ddl_type: ddlType === "none" ? null : ddlType,
@@ -241,17 +248,36 @@ export function TaskForm({
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setDimension(d)}
+                  onClick={() => {
+                    setDimension(d);
+                    // Dropping into another top-level invalidates the current
+                    // sub-category, so clear it.
+                    setSubcategoryUuid(null);
+                  }}
                   className={`flex-1 rounded border px-3 py-1.5 text-sm transition ${
                     dimension === d
                       ? "border-blue-500 bg-blue-50 font-medium text-blue-700"
                       : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {d === "work" ? "工作" : "生活"}
+                  {labelOf(d)}
                 </button>
               ))}
             </div>
+            {subsOf(dimension).length > 0 && (
+              <select
+                value={subcategoryUuid ?? ""}
+                onChange={(e) => setSubcategoryUuid(e.target.value || null)}
+                className="mt-2 w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              >
+                <option value="">（不分子类）</option>
+                {subsOf(dimension).map((s) => (
+                  <option key={s.uuid} value={s.uuid}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
