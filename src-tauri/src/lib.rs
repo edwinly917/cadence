@@ -1,5 +1,7 @@
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod db;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![
@@ -36,6 +38,12 @@ pub fn run() {
                 .add_migrations("sqlite:cadence.db", migrations)
                 .build(),
         )
+        .manage(db::LibsqlState::default())
+        .invoke_handler(tauri::generate_handler![
+            db::db_select,
+            db::db_execute,
+            db::db_sync
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

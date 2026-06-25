@@ -100,7 +100,7 @@ function QuadrantSection({
   return (
     <section
       ref={setNodeRef}
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-lg border ${meta.border} ${meta.bg} p-4 transition ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-lg border sm:h-full ${meta.border} ${meta.bg} p-3 sm:p-4 transition ${
         isOver ? "ring-2 ring-blue-300" : ""
       }`}
     >
@@ -124,7 +124,7 @@ function QuadrantSection({
         items={tasks.map((t) => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
+        <div className="flex-1 min-h-0 max-h-[45vh] space-y-2 overflow-y-auto pr-1 sm:max-h-none">
           {tasks.length === 0 ? (
             <p className="mt-2 text-xs italic text-gray-400">
               暂无任务,可拖拽其它任务到此或点击右上 + 添加
@@ -267,7 +267,7 @@ export function QuadrantBoard({
   };
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full flex-col p-3 sm:p-6">
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -279,14 +279,14 @@ export function QuadrantBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="relative flex-1 min-h-0">
-          <div className="pointer-events-none absolute -top-2 left-1/2 z-10 -translate-x-1/2 -translate-y-full text-xs text-gray-400">
+        <div className="relative flex-1 min-h-0 overflow-y-auto sm:overflow-visible">
+          <div className="pointer-events-none absolute -top-2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-full text-xs text-gray-400 sm:block">
             ↑ 重要程度
           </div>
-          <div className="pointer-events-none absolute -right-2 top-1/2 z-10 translate-x-full -translate-y-1/2 text-xs text-gray-400">
+          <div className="pointer-events-none absolute -right-2 top-1/2 z-10 hidden translate-x-full -translate-y-1/2 text-xs text-gray-400 sm:block">
             紧急程度 →
           </div>
-          <div className="grid h-full grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:h-full sm:grid-cols-2 sm:gap-4">
             {LAYOUT_ORDER.map((q) => (
               <QuadrantSection
                 key={q}

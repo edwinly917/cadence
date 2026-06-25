@@ -1,4 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Task,
   Quadrant,
@@ -15,11 +16,49 @@ import {
 } from "./positioning";
 
 const DB_URL = "sqlite:cadence.db";
-let dbInstance: Database | null = null;
 
-export async function getDb(): Promise<Database> {
+// Minimal DB surface used across this module. Both the plugin-sql Database and
+// the libSQL invoke-shim satisfy it, so call sites (db.select/db.execute) stay
+// engine-agnostic.
+export interface DbLike {
+  select<T>(sql: string, params?: unknown[]): Promise<T>;
+  execute(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rowsAffected: number; lastInsertId: number }>;
+}
+
+// OFF by default — the app keeps using tauri-plugin-sql until the libSQL engine
+// is runtime-verified. Flip with localStorage["cadence.useLibsql"] = "1".
+function useLibsql(): boolean {
+  try {
+    return localStorage.getItem("cadence.useLibsql") === "1";
+  } catch {
+    return false;
+  }
+}
+
+// plugin-sql uses $1/$2 placeholders; raw libSQL/SQLite wants ?1/?2.
+function toLibsqlSql(sql: string): string {
+  return sql.replace(/\$(\d+)/g, "?$1");
+}
+
+const libsqlShim: DbLike = {
+  select: <T,>(sql: string, params: unknown[] = []) =>
+    invoke<T>("db_select", { sql: toLibsqlSql(sql), params }),
+  execute: (sql: string, params: unknown[] = []) =>
+    invoke<{ rowsAffected: number; lastInsertId: number }>("db_execute", {
+      sql: toLibsqlSql(sql),
+      params,
+    }),
+};
+
+let dbInstance: DbLike | null = null;
+
+export async function getDb(): Promise<DbLike> {
+  if (useLibsql()) return libsqlShim;
   if (!dbInstance) {
-    dbInstance = await Database.load(DB_URL);
+    dbInstance = (await Database.load(DB_URL)) as unknown as DbLike;
   }
   return dbInstance;
 }
@@ -53,7 +92,7 @@ const rowToTask = (r: TaskRow): Task => ({
 });
 
 async function nextPositionInQuadrant(
-  db: Database,
+  db: DbLike,
   dimension: Dimension,
   importance: 0 | 1,
   urgency: 0 | 1,
